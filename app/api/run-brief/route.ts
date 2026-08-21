@@ -13,11 +13,11 @@ const BATCH_DELAY_MS = 2000
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 async function processBatch(articles: RawArticle[]): Promise<ProcessedInsight[]> {
-  const results = await Promise.allSettled(
-    articles.map(async (article) => {
+  const settled = await Promise.allSettled(
+    articles.map(async (article): Promise<ProcessedInsight | null> => {
       const output = await analyzeWithClaude(buildPrompt(article))
       if (!output) return null
-      return {
+      const insight: ProcessedInsight = {
         headline:           article.headline,
         source_url:         article.sourceUrl,
         source_origin:      article.sourceName,
@@ -34,13 +34,15 @@ async function processBatch(articles: RawArticle[]): Promise<ProcessedInsight[]>
         processed_by:       'claude-haiku-4-5-20251001',
         content_hash:       computeHash(article.headline, article.sourceName),
         run_date:           new Date().toISOString().split('T')[0],
-      } satisfies ProcessedInsight
+      }
+      return insight
     })
   )
-  return results
-    .filter((r): r is PromiseFulfilledResult<ProcessedInsight | null> => r.status === 'fulfilled')
-    .map(r => r.value)
-    .filter((v): v is ProcessedInsight => v !== null)
+  const out: ProcessedInsight[] = []
+  for (const r of settled) {
+    if (r.status === 'fulfilled' && r.value !== null) out.push(r.value)
+  }
+  return out
 }
 
 export async function POST() {
