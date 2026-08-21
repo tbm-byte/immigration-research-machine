@@ -16,7 +16,7 @@ export default function CategoryPills({
 
   return (
     <div className="pills-bar">
-      {CATEGORIES.map(({ label, value, emoji }) => {
+      {CATEGORIES.map(({ label, value }) => {
         const count = value === null ? total : (counts[value] ?? 0)
         const params = new URLSearchParams({ date })
         if (value) params.set('cat', value)
@@ -26,7 +26,7 @@ export default function CategoryPills({
             href={`/?${params}`}
             className={`pill${active === value ? ' active' : ''}`}
           >
-            {emoji} {label}
+            {label}
             <span className="count-badge">{count}</span>
           </Link>
         )

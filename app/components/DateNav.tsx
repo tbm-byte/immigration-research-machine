@@ -28,10 +28,12 @@ export default function DateNav({ date }: { date: string }) {
 
   return (
     <div className="date-nav">
-      <button className="btn-ghost" onClick={() => go(-1)}>‹</button>
-      <span className="date-chip">{label}</span>
-      <button className="btn-ghost" onClick={() => go(1)}>›</button>
-      <button className="btn-today" onClick={() => router.push('/')} disabled={isToday}>Today</button>
+      <button className="date-nav-btn" onClick={() => go(-1)} aria-label="Previous day">‹</button>
+      <span className="date-nav-label">{label}</span>
+      <button className="date-nav-btn" onClick={() => go(1)} disabled={isToday} aria-label="Next day" style={{ opacity: isToday ? 0.4 : 1 }}>›</button>
+      {!isToday && (
+        <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => router.push('/')}>Today</button>
+      )}
     </div>
   )
 }

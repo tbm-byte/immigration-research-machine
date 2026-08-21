@@ -31,7 +31,7 @@ export default function UsageBar() {
 
   useEffect(() => {
     fetchUsage()
-    const interval = setInterval(fetchUsage, 5 * 60 * 1000) // refresh every 5 min
+    const interval = setInterval(fetchUsage, 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [fetchUsage])
 
@@ -40,12 +40,14 @@ export default function UsageBar() {
   const pct = limit > 0 ? Math.min(100, (used / limit) * 100) : 0
   const remaining = limit > 0 ? limit - used : null
 
-  const barColor = pct > 85 ? '#ef4444' : pct > 60 ? '#f59e0b' : '#22c55e'
+  const fillClass = pct > 85 ? 'usage-bar-fill usage-bar-fill-low'
+    : pct > 60 ? 'usage-bar-fill usage-bar-fill-warn'
+    : 'usage-bar-fill usage-bar-fill-ok'
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', opacity: 0.6 }}>
-        <span style={{ fontSize: '12px', color: '#94a3b8' }}>Loading credits…</span>
+      <div className="usage-bar-wrap">
+        <span className="usage-bar-label" style={{ opacity: 0.5 }}>Loading credits…</span>
       </div>
     )
   }
@@ -54,61 +56,31 @@ export default function UsageBar() {
     return (
       <button
         onClick={fetchUsage}
-        style={{ fontSize: '12px', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}
+        className="btn-ghost"
+        style={{ fontSize: 12 }}
       >
-        ⚠️ Credits unavailable — retry
+        Credits unavailable — retry
       </button>
     )
   }
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-      <span style={{ fontSize: '12px', color: '#94a3b8', whiteSpace: 'nowrap' }}>
-        Apify credits
-      </span>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '120px' }}>
-        <div style={{
-          width: '120px',
-          height: '6px',
-          background: '#2d3748',
-          borderRadius: '3px',
-          overflow: 'hidden',
-        }}>
-          <div style={{
-            width: `${pct}%`,
-            height: '100%',
-            background: barColor,
-            borderRadius: '3px',
-            transition: 'width 0.5s ease',
-          }} />
+    <div className="usage-bar-wrap">
+      <span className="usage-bar-label">Apify</span>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <div className="usage-bar-track">
+          <div className={fillClass} style={{ width: `${pct}%` }} />
         </div>
-        <span style={{ fontSize: '11px', color: pct > 85 ? '#ef4444' : '#94a3b8' }}>
+        <span className="usage-bar-sub">
           {limit > 0
-            ? `${remaining?.toLocaleString()} left / ${limit.toLocaleString()} total`
+            ? `${remaining?.toLocaleString()} left`
             : `${used.toLocaleString()} used`}
         </span>
       </div>
       {pct > 85 && (
-        <span style={{
-          fontSize: '11px',
-          background: '#7f1d1d',
-          color: '#fca5a5',
-          padding: '2px 6px',
-          borderRadius: '4px',
-          whiteSpace: 'nowrap',
-        }}>
-          ⚠️ Low credits!
-        </span>
+        <span className="usage-bar-alert">Low credits</span>
       )}
-      <span style={{
-        fontSize: '11px',
-        color: '#475569',
-        background: '#1e293b',
-        padding: '2px 6px',
-        borderRadius: '4px',
-      }}>
-        {data.plan}
-      </span>
+      <span className="usage-bar-plan">{data.plan}</span>
     </div>
   )
 }

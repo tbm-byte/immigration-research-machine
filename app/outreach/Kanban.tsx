@@ -1,20 +1,18 @@
 'use client'
 import { useState, useRef, useCallback } from 'react'
 import { OutreachContact, OUTREACH_COLUMNS } from '@/lib/constants'
-import Link from 'next/link'
 
 interface Props {
   initialContacts: OutreachContact[]
 }
 
-// ── Match potential scoring ────────────────────────────────────────────────
 function matchScore(c: OutreachContact): number {
   let s = 0
-  if (c.mobile_number)  s += 30  // most reachable
-  if (c.social_handle)  s += 25  // findable on platform
-  if (c.contact_name)   s += 20  // personalization possible
-  if (c.linkedin_url || c.website_url) s += 15  // professional presence
-  if (c.insight_headline) s += 10  // has context/hook
+  if (c.mobile_number)  s += 30
+  if (c.social_handle)  s += 25
+  if (c.contact_name)   s += 20
+  if (c.linkedin_url || c.website_url) s += 15
+  if (c.insight_headline) s += 10
   return Math.min(s, 100)
 }
 
@@ -34,7 +32,6 @@ export default function Kanban({ initialContacts }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>('score')
   const notesTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
-  // ── Add Prospect drawer state ────────────────────────────────────────────
   const [showDrawer, setShowDrawer] = useState(false)
   const [drawerFirm, setDrawerFirm] = useState('')
   const [drawerContact, setDrawerContact] = useState('')
@@ -46,18 +43,15 @@ export default function Kanban({ initialContacts }: Props) {
   const [drawerLoading, setDrawerLoading] = useState(false)
   const [drawerError, setDrawerError] = useState('')
 
-  // ── Sorted + filtered by status ────────────────────────────────────────
   function byStatus(key: string): OutreachContact[] {
     const filtered = contacts.filter(c => c.status === key)
     return [...filtered].sort((a, b) => {
       if (sortBy === 'score') return matchScore(b) - matchScore(a)
       if (sortBy === 'name')  return a.firm_name.localeCompare(b.firm_name)
-      // date: newest first
       return (b.created_at ?? '').localeCompare(a.created_at ?? '')
     })
   }
 
-  // ── Patch helper ────────────────────────────────────────────────────────
   async function patch(id: string, updates: Partial<OutreachContact>) {
     setContacts(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c))
     try {
@@ -69,7 +63,6 @@ export default function Kanban({ initialContacts }: Props) {
     } catch {}
   }
 
-  // ── Drag handlers ───────────────────────────────────────────────────────
   function handleDragStart(e: React.DragEvent, id: string) {
     setDragId(id)
     e.dataTransfer.effectAllowed = 'move'
@@ -94,7 +87,6 @@ export default function Kanban({ initialContacts }: Props) {
     setDragId(null)
   }
 
-  // ── Auto-save notes ──────────────────────────────────────────────────────
   const handleNotes = useCallback((id: string, value: string) => {
     setContacts(prev => prev.map(c => c.id === id ? { ...c, notes: value } : c))
     if (notesTimers.current[id]) clearTimeout(notesTimers.current[id])
@@ -107,7 +99,6 @@ export default function Kanban({ initialContacts }: Props) {
     }, 800)
   }, [])
 
-  // ── Delete ───────────────────────────────────────────────────────────────
   async function handleDelete(id: string) {
     setContacts(prev => prev.filter(c => c.id !== id))
     try {
@@ -119,7 +110,6 @@ export default function Kanban({ initialContacts }: Props) {
     } catch {}
   }
 
-  // ── Add Prospect (full drawer) ───────────────────────────────────────────
   function resetDrawer() {
     setDrawerFirm(''); setDrawerContact(''); setDrawerHandle('')
     setDrawerMobile(''); setDrawerWebsite(''); setDrawerNotes('')
@@ -164,7 +154,6 @@ export default function Kanban({ initialContacts }: Props) {
     setDrawerLoading(false)
   }
 
-  // ── Copy DM ──────────────────────────────────────────────────────────────
   const [copiedDm, setCopiedDm] = useState<string | null>(null)
   function copyDm(id: string, text: string) {
     navigator.clipboard.writeText(text).then(() => {
@@ -181,13 +170,11 @@ export default function Kanban({ initialContacts }: Props) {
   }
 
   return (
-    <div className="kanban-page">
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 52px)', overflow: 'hidden' }}>
+      {/* Header / toolbar */}
       <div className="kanban-header">
-        <h1>📋 DM Pipeline</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>DM Pipeline</h1>
         <div className="kanban-header-controls">
-          <Link href="/" className="nav-link">← Brief</Link>
-          <Link href="/leads" className="nav-link">🔍 Find Leads</Link>
           {/* Sort controls */}
           <div className="pipeline-sort">
             <span className="pipeline-sort-label">Sort:</span>
@@ -197,7 +184,7 @@ export default function Kanban({ initialContacts }: Props) {
                 className={`pipeline-sort-btn${sortBy === k ? ' pipeline-sort-active' : ''}`}
                 onClick={() => setSortBy(k)}
               >
-                {k === 'score' ? '🔥 Match' : k === 'date' ? '🕐 Date' : 'A–Z'}
+                {k === 'score' ? 'Match' : k === 'date' ? 'Date' : 'A–Z'}
               </button>
             ))}
           </div>
@@ -220,11 +207,9 @@ export default function Kanban({ initialContacts }: Props) {
           )
         })}
         <div className="pipeline-stat pipeline-stat-sold">
-          <span className="pipeline-stat-emoji">💰</span>
           <span className="pipeline-stat-num">{contacts.filter(c => c.sold).length}</span>
           <span className="pipeline-stat-lbl">Sold</span>
         </div>
-        {/* Match score legend */}
         <div className="pipeline-legend">
           <span className="legend-dot legend-high" />Hot ≥70
           <span className="legend-dot legend-mid" style={{ marginLeft: 8 }} />Warm 40–69
@@ -239,7 +224,7 @@ export default function Kanban({ initialContacts }: Props) {
           return (
             <div
               key={col.key}
-              className={['kanban-col', col.color, dragOver === col.key ? 'drag-over' : ''].filter(Boolean).join(' ')}
+              className={['kanban-col', dragOver === col.key ? 'drag-over' : ''].filter(Boolean).join(' ')}
               onDragOver={e => handleDragOver(e, col.key)}
               onDragLeave={() => setDragOver(null)}
               onDrop={e => handleDrop(e, col.key as OutreachContact['status'])}
@@ -259,7 +244,7 @@ export default function Kanban({ initialContacts }: Props) {
                   return (
                     <div
                       key={c.id}
-                      className={`kanban-card kanban-card-${tier}${dragId === c.id ? ' dragging' : ''}`}
+                      className={`kanban-card${dragId === c.id ? ' dragging' : ''}`}
                       draggable
                       onDragStart={e => handleDragStart(e, c.id)}
                       onDragEnd={() => setDragId(null)}
@@ -272,10 +257,10 @@ export default function Kanban({ initialContacts }: Props) {
                         </span>
                         {c.platform && (
                           <span className={`kc-platform-badge kc-platform-${c.platform}`}>
-                            {c.platform === 'instagram' ? '📸' : '💼'}
+                            {c.platform === 'instagram' ? 'IG' : 'LI'}
                           </span>
                         )}
-                        {c.sold && <span className="kc-sold-badge">💰 Sold</span>}
+                        {c.sold && <span className="kc-sold-badge">Sold</span>}
                       </div>
 
                       {/* Match score bar */}
@@ -286,12 +271,10 @@ export default function Kanban({ initialContacts }: Props) {
                         />
                       </div>
 
-                      {/* Contact */}
                       {c.contact_name && (
-                        <div className="kc-contact">👤 {c.contact_name}</div>
+                        <div className="kc-contact">{c.contact_name}</div>
                       )}
 
-                      {/* Social handle */}
                       {c.social_handle && (
                         <div className="kc-handle">
                           {c.platform === 'instagram' ? (
@@ -306,35 +289,30 @@ export default function Kanban({ initialContacts }: Props) {
                         </div>
                       )}
 
-                      {/* Mobile */}
                       {c.mobile_number && (
-                        <div className="kc-contact">📱 {c.mobile_number}</div>
+                        <div className="kc-contact">{c.mobile_number}</div>
                       )}
 
-                      {/* Website */}
                       {c.website_url && (
                         <div className="kc-contact">
                           <a href={c.website_url} target="_blank" rel="noopener noreferrer" className="kc-link">
-                            🌐 {c.website_url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
+                            {c.website_url.replace(/^https?:\/\/(www\.)?/, '').split('/')[0]}
                           </a>
                         </div>
                       )}
 
-                      {/* Insight trigger */}
                       {c.insight_headline && (
                         <div className="kc-insight" title={c.insight_headline}>
-                          📰 {c.insight_headline}
+                          {c.insight_headline}
                         </div>
                       )}
 
-                      {/* Draft DM preview */}
                       {c.draft_message && (
                         <div className="kc-dm">{c.draft_message}</div>
                       )}
 
-                      {/* Outreach date */}
                       {c.outreach_date && (
-                        <div className="kc-date">📅 Sent {c.outreach_date}</div>
+                        <div className="kc-date">Sent {c.outreach_date}</div>
                       )}
 
                       {/* Boolean status flags */}
@@ -392,7 +370,7 @@ export default function Kanban({ initialContacts }: Props) {
                       <div className="kc-actions">
                         {c.draft_message && (
                           <button className="kc-btn" onClick={() => copyDm(c.id, c.draft_message!)}>
-                            {copiedDm === c.id ? '✓ DM Copied' : 'Copy DM'}
+                            {copiedDm === c.id ? 'Copied' : 'Copy DM'}
                           </button>
                         )}
                         {NEXT_STAGE[col.key] && (
@@ -420,17 +398,16 @@ export default function Kanban({ initialContacts }: Props) {
         })}
       </div>
 
-      {/* ── Add Prospect Drawer ──────────────────────────────────────────── */}
+      {/* Add Prospect Drawer */}
       {showDrawer && (
         <div className="drawer-overlay" onClick={e => { if (e.target === e.currentTarget) { setShowDrawer(false); resetDrawer() } }}>
           <div className="drawer-panel">
             <div className="drawer-header">
-              <div className="drawer-title">+ Add Prospect</div>
+              <div className="drawer-title">Add Prospect</div>
               <button className="drawer-close" onClick={() => { setShowDrawer(false); resetDrawer() }}>✕</button>
             </div>
 
             <div className="drawer-body">
-              {/* Platform tabs */}
               <div className="drawer-field">
                 <label className="drawer-label">Platform</label>
                 <div className="platform-tabs">
@@ -440,7 +417,7 @@ export default function Kanban({ initialContacts }: Props) {
                       className={`platform-tab${drawerPlatform === p ? ' platform-tab-active' : ''}`}
                       onClick={() => setDrawerPlatform(p)}
                     >
-                      {p === 'instagram' ? '📸 Instagram' : '💼 LinkedIn'}
+                      {p === 'instagram' ? 'Instagram' : 'LinkedIn'}
                     </button>
                   ))}
                 </div>
@@ -560,7 +537,7 @@ export default function Kanban({ initialContacts }: Props) {
               )}
 
               {drawerError && (
-                <div className="outreach-form-error">⚠️ {drawerError}</div>
+                <div className="outreach-form-error">{drawerError}</div>
               )}
             </div>
 
@@ -576,7 +553,7 @@ export default function Kanban({ initialContacts }: Props) {
                 onClick={submitDrawer}
                 disabled={!drawerFirm.trim() || drawerLoading}
               >
-                {drawerLoading ? '⏳ Adding…' : 'Add to Pipeline →'}
+                {drawerLoading ? 'Adding…' : 'Add to Pipeline'}
               </button>
             </div>
           </div>

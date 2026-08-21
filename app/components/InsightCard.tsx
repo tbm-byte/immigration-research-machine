@@ -12,16 +12,12 @@ interface Props {
 
 export default function InsightCard({ insight, isRead, onRead, view }: Props) {
   const [expanded, setExpanded] = useState(false)
-
-  // Unified copy state — key string identifies which item was copied
   const [copied, setCopied] = useState<string | null>(null)
 
-  // Content ideas state
   const [contentIdeas, setContentIdeas] = useState<ContentIdea[] | null>(null)
   const [loadingIdeas, setLoadingIdeas] = useState(false)
   const [ideasError, setIdeasError] = useState('')
 
-  // Outreach form state
   const [showOutreachForm, setShowOutreachForm] = useState(false)
   const [outreachFirm, setOutreachFirm] = useState('')
   const [outreachContact, setOutreachContact] = useState('')
@@ -47,9 +43,7 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
   }
 
   const copy = useCallback((key: string, text: string) => {
-    navigator.clipboard.writeText(text).catch(() => {
-      // clipboard may be unavailable in non-HTTPS context — silently fail
-    }).then(() => {
+    navigator.clipboard.writeText(text).catch(() => {}).then(() => {
       setCopied(key)
       setTimeout(() => setCopied(null), 2000)
     })
@@ -134,8 +128,8 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
 
   return (
     <div className={[
-      'card',
-      isRead   ? 'card-read'     : 'card-unread',
+      'card insight-card',
+      isRead ? 'card-read' : 'card-unread insight-card unread',
       expanded ? 'card-expanded' : '',
     ].filter(Boolean).join(' ')}>
 
@@ -143,19 +137,19 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
       <div className="card-head" onClick={toggle} role="button" tabIndex={0}
            onKeyDown={e => e.key === 'Enter' && toggle()}>
         <div className="card-meta">
-          <span className={`badge ${badge.cls}`}>{badge.label}</span>
-          <span className="source">{insight.source_origin}</span>
+          <span className={`badge ${badge.cls} insight-card-category`}>{badge.label}</span>
+          <span className="insight-card-source source">{insight.source_origin}</span>
           {!isRead && <span className="unread-dot" />}
           <span className="card-chevron">{expanded ? '▲' : '▼'}</span>
         </div>
-        <div className="headline">
+        <div className="insight-card-headline headline">
           <a href={insight.source_url} target="_blank" rel="noopener noreferrer"
              onClick={e => e.stopPropagation()}>
             {insight.headline}
           </a>
         </div>
         {!expanded && previewText && (
-          <div className="card-preview">{previewText}</div>
+          <div className="insight-card-body card-preview">{previewText}</div>
         )}
       </div>
 
@@ -166,7 +160,7 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
           {view !== 'sales' && summary && (
             <div className="card-section">
               <div className="field-label">Summary</div>
-              <div className="field-text">{summary}</div>
+              <div className="field-text research-section-body">{summary}</div>
             </div>
           )}
 
@@ -182,7 +176,7 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
               <div className="field-label-row">
                 <div className="field-label">Action Strategy</div>
                 <button className="copy-btn" onClick={() => copy('strategy', action)}>
-                  {copied === 'strategy' ? '✓ Copied' : 'Copy'}
+                  {copied === 'strategy' ? 'Copied' : 'Copy'}
                 </button>
               </div>
               <div className="action-text">{action}</div>
@@ -190,18 +184,18 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
           )}
 
           {view !== 'sales' && training && (
-            <div className="card-section card-section-training">
+            <div className="card-section">
               <div className="field-label">Training Note</div>
               <div className="training-text">{training}</div>
             </div>
           )}
 
           {pitch && (
-            <div className="card-section card-section-pitch">
+            <div className="card-section">
               <div className="field-label-row">
                 <div className="field-label">Pitch Angle</div>
                 <button className="copy-btn copy-btn-pitch" onClick={() => copy('pitch', pitch)}>
-                  {copied === 'pitch' ? '✓ Copied' : 'Copy'}
+                  {copied === 'pitch' ? 'Copied' : 'Copy'}
                 </button>
               </div>
               <div className="pitch-text">{pitch}</div>
@@ -209,23 +203,22 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
           )}
 
           {view !== 'training' && dm && (
-            <div className="card-section card-section-dm">
+            <div className="card-section">
               <div className="field-label-row">
                 <div className="field-label">DM Opener</div>
                 <div className="row-actions">
                   <button className="copy-btn copy-btn-dm" onClick={() => copy('dm', dm)}>
-                    {copied === 'dm' ? '✓ Copied' : 'Copy'}
+                    {copied === 'dm' ? 'Copied' : 'Copy'}
                   </button>
                   {!addedToOutreach ? (
                     <button
                       className="outreach-btn"
                       onClick={e => { e.stopPropagation(); setShowOutreachForm(v => !v); setOutreachError('') }}
-                      title="Add a prospect to outreach using this DM as the hook"
                     >
-                      {showOutreachForm ? '✕ Cancel' : '+ Outreach'}
+                      {showOutreachForm ? 'Cancel' : '+ Outreach'}
                     </button>
                   ) : (
-                    <span className="outreach-btn outreach-btn-done">✓ Added to Pipeline</span>
+                    <span className="outreach-btn outreach-btn-done">Added to Pipeline</span>
                   )}
                 </div>
               </div>
@@ -242,7 +235,7 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
                         className={`platform-tab${outreachPlatform === p ? ' platform-tab-active' : ''}`}
                         onClick={() => setOutreachPlatform(p)}
                       >
-                        {p === 'instagram' ? '📸 Instagram' : '💼 LinkedIn'}
+                        {p === 'instagram' ? 'Instagram' : 'LinkedIn'}
                       </button>
                     ))}
                   </div>
@@ -259,7 +252,7 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
                     value={outreachMobile} onChange={e => setOutreachMobile(e.target.value)} />
 
                   {outreachError && (
-                    <div className="outreach-form-error">⚠️ {outreachError}</div>
+                    <div className="outreach-form-error">{outreachError}</div>
                   )}
 
                   <div className="outreach-form-actions">
@@ -268,7 +261,7 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
                       onClick={submitOutreach}
                       disabled={!outreachFirm.trim() || addingToOutreach}
                     >
-                      {addingToOutreach ? '⏳ Adding…' : 'Add to Kanban →'}
+                      {addingToOutreach ? 'Adding…' : 'Add to Pipeline'}
                     </button>
                   </div>
                 </div>
@@ -277,15 +270,15 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
           )}
 
           {postAngles.length > 0 && (
-            <div className="card-section card-section-content">
-              <div className="field-label">Content Studio · {postAngles.length} Post Angles</div>
+            <div className="card-section">
+              <div className="field-label">Content Studio — {postAngles.length} Post Angles</div>
               <div className="post-angles">
                 {postAngles.map((angle, i) => (
                   <div key={i} className="post-angle">
                     <span className="post-angle-num">{i + 1}</span>
                     <div className="post-angle-text">{angle}</div>
                     <button className="copy-btn copy-btn-post" onClick={() => copy(`post-${i}`, angle)}>
-                      {copied === `post-${i}` ? '✓' : 'Copy'}
+                      {copied === `post-${i}` ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                 ))}
@@ -294,31 +287,31 @@ export default function InsightCard({ insight, isRead, onRead, view }: Props) {
           )}
 
           {/* Content Ideas */}
-          <div className="card-section card-section-ideas">
+          <div className="card-section">
             <div className="field-label-row">
-              <div className="field-label">💡 Content Ideas</div>
+              <div className="field-label">Content Ideas</div>
               <button className="copy-btn" onClick={generateContentIdeas} disabled={loadingIdeas}>
-                {loadingIdeas ? '⏳ Generating…' : contentIdeas ? '↻ Regenerate' : 'Generate Ideas'}
+                {loadingIdeas ? 'Generating…' : contentIdeas ? 'Regenerate' : 'Generate Ideas'}
               </button>
             </div>
 
-            {ideasError && <div className="ideas-error">⚠️ {ideasError}</div>}
+            {ideasError && <div className="ideas-error">{ideasError}</div>}
 
             {contentIdeas && contentIdeas.length > 0 && (
               <div className="content-ideas-list">
                 {contentIdeas.map((idea, i) => (
                   <div key={i} className="content-idea-card">
                     <div className="content-idea-meta">
-                      <span className={`funnel-badge funnel-${idea.funnel_stage.toLowerCase()}`}>
+                      <span className={`funnel-badge funnel-${idea.funnel_stage.toLowerCase().replace(/\s+/g, '-')}`}>
                         {idea.funnel_stage}
                       </span>
                       <span className="idea-format">{idea.format}</span>
-                      {idea.negative_frame && <span className="idea-tag idea-neg">⚡ Negative Frame</span>}
+                      {idea.negative_frame && <span className="idea-tag idea-neg">Negative Frame</span>}
                     </div>
                     <div className="idea-hook">"{idea.hook}"</div>
                     <div className="idea-caption">{idea.caption_start}</div>
                     <button className="copy-btn copy-btn-post" onClick={() => copyIdea(idea, i)}>
-                      {copied === `idea-${i}` ? '✓ Copied' : 'Copy'}
+                      {copied === `idea-${i}` ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                 ))}
