@@ -1,16 +1,15 @@
 'use client'
 import { useState, useCallback } from 'react'
-import Link from 'next/link'
 import type { ContentIdea } from '@/lib/constants'
 
 type FunnelFilter = 'all' | 'TOF' | 'MOF' | 'BOF'
 type FormatFilter = 'all' | 'Talking Head Reel' | 'Carousel' | 'Short Reel (<30s)' | 'Story Sequence' | 'Static Quote Card' | 'Listicle Post'
 
-const FUNNEL_OPTIONS: { value: FunnelFilter; label: string; color: string }[] = [
-  { value: 'all',  label: 'All Stages',  color: '' },
-  { value: 'TOF',  label: 'TOF – Awareness', color: 'funnel-tof' },
-  { value: 'MOF',  label: 'MOF – Consideration', color: 'funnel-mof' },
-  { value: 'BOF',  label: 'BOF – Conversion', color: 'funnel-bof' },
+const FUNNEL_OPTIONS: { value: FunnelFilter; label: string }[] = [
+  { value: 'all', label: 'All stages' },
+  { value: 'TOF', label: 'TOF – Awareness' },
+  { value: 'MOF', label: 'MOF – Consideration' },
+  { value: 'BOF', label: 'BOF – Conversion' },
 ]
 
 const FORMAT_OPTIONS: FormatFilter[] = [
@@ -33,7 +32,7 @@ const FUNNEL_GUIDE = [
   {
     stage: 'TOF',
     title: 'Top of Funnel — Awareness',
-    cls: 'funnel-tof',
+    cls: 'tof',
     desc: 'Make strangers aware of the problem. No offer. No pitch. Just a hook that stops the scroll and a truth that resonates.',
     formats: 'Talking Head Reel, Short Reel (<30s), Story Sequence',
     example: '"Most immigration attorneys are one USCIS policy change away from losing half their pipeline."',
@@ -41,7 +40,7 @@ const FUNNEL_GUIDE = [
   {
     stage: 'MOF',
     title: 'Middle of Funnel — Consideration',
-    cls: 'funnel-mof',
+    cls: 'mof',
     desc: 'Build trust with people who already know the problem exists. Show your framework, show results, show the process.',
     formats: 'Carousel, Listicle Post, Static Quote Card',
     example: `"Here's the 3-post system immigration firms use to turn news cycles into booked calls."`,
@@ -49,7 +48,7 @@ const FUNNEL_GUIDE = [
   {
     stage: 'BOF',
     title: 'Bottom of Funnel — Conversion',
-    cls: 'funnel-bof',
+    cls: 'bof',
     desc: 'Close the warm audience. Make the offer clear. Show proof. Make it easy to say yes.',
     formats: 'Talking Head Reel, Carousel (case study)',
     example: `"We took Rodriguez Immigration from $0 in paid ads to 47 qualified consultations in 90 days. Here's the playbook."`,
@@ -105,7 +104,6 @@ export default function ContentPage() {
 
   function saveIdea(idea: ContentIdea) {
     setSavedIdeas(prev => {
-      // Deduplicate by hook
       if (prev.some(s => s.hook === idea.hook)) return prev
       return [...prev, idea]
     })
@@ -116,7 +114,7 @@ export default function ContentPage() {
   }
 
   function copyIdea(idea: ContentIdea, key: string) {
-    const text = `[${idea.format} · ${idea.funnel_stage}${idea.negative_frame ? ' · ⚡ Negative Frame' : ''}]\n\n🎣 Hook:\n"${idea.hook}"\n\n📝 Caption start:\n${idea.caption_start}`
+    const text = `[${idea.format} · ${idea.funnel_stage}${idea.negative_frame ? ' · Negative Frame' : ''}]\n\nHook:\n"${idea.hook}"\n\nCaption start:\n${idea.caption_start}`
     copy(key, text)
   }
 
@@ -125,303 +123,314 @@ export default function ContentPage() {
     : []
 
   return (
-    <div className="content-page">
-      {/* Header */}
-      <div className="content-header">
-        <div className="content-header-top">
-          <h1>✍️ Content Ideation</h1>
-          <div className="content-nav">
-            <Link href="/" className="nav-link">← Brief</Link>
-            <Link href="/research" className="nav-link">🔬 Research</Link>
-            <Link href="/outreach" className="nav-link">📋 Pipeline</Link>
+    <div className="page-container">
+      <div className="content-shell">
+
+        {/* Composer panel */}
+        <div className="content-composer">
+          <div className="content-composer-header">
+            <h1 className="page-title">Content Ideation</h1>
+            <p className="page-sub">Generate post ideas using the organic acquisition framework</p>
           </div>
-        </div>
-        <p className="content-sub">Generate post ideas using the organic acquisition framework</p>
 
-        {/* Generator input */}
-        <div className="content-generator">
-          <textarea
-            className="content-topic-input"
-            rows={2}
-            placeholder="What do you want to post about? e.g. 'H-1B cap season anxiety', 'Why immigration firms fail at Facebook ads', 'USCIS delays and client trust'..."
-            value={topic}
-            onChange={e => setTopic(e.target.value)}
-            disabled={loading}
-          />
+          <div className="content-field">
+            <label className="content-field-label">Topic</label>
+            <textarea
+              className="content-textarea"
+              rows={3}
+              placeholder="What do you want to post about? e.g. 'H-1B cap season anxiety', 'Why immigration firms fail at Facebook ads'…"
+              value={topic}
+              onChange={e => setTopic(e.target.value)}
+              disabled={loading}
+            />
+          </div>
 
-          <div className="content-controls">
-            {/* Funnel filter */}
-            <div className="content-control-group">
-              <label className="content-control-label">Funnel Stage</label>
-              <div className="content-filter-row">
-                {FUNNEL_OPTIONS.map(f => (
-                  <button
-                    key={f.value}
-                    className={`content-filter-btn${funnelFilter === f.value ? ' content-filter-active' : ''}`}
-                    onClick={() => setFunnelFilter(f.value)}
-                  >
-                    {f.value === 'all' ? 'All' : f.value}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Format filter */}
-            <div className="content-control-group">
-              <label className="content-control-label">Format</label>
-              <div className="content-filter-row">
-                {FORMAT_OPTIONS.map(f => (
-                  <button
-                    key={f}
-                    className={`content-filter-btn${formatFilter === f ? ' content-filter-active' : ''}`}
-                    onClick={() => setFormatFilter(f)}
-                  >
-                    {f === 'all' ? 'Any' : f}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Count + generate */}
-            <div className="content-control-bottom">
-              <div className="content-count-row">
-                <label className="content-control-label">Ideas to generate:</label>
-                {[5, 10, 15, 20].map(n => (
-                  <button key={n}
-                    className={`content-filter-btn${count === n ? ' content-filter-active' : ''}`}
-                    onClick={() => setCount(n)}>
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <button
-                className="content-generate-btn"
-                onClick={() => generate()}
-                disabled={loading || !topic.trim()}
-              >
-                {loading ? '⏳ Generating...' : '✨ Generate Ideas'}
-              </button>
+          <div className="content-field">
+            <label className="content-field-label">Funnel stage</label>
+            <div className="content-chip-row">
+              {FUNNEL_OPTIONS.map(f => (
+                <button
+                  key={f.value}
+                  className={`content-chip${funnelFilter === f.value ? ' active' : ''}`}
+                  onClick={() => setFunnelFilter(f.value)}
+                >
+                  {f.value === 'all' ? 'All' : f.value}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
 
-        {/* Seed topics */}
-        <div className="content-seeds">
-          <div className="content-seeds-label">Or start with a topic:</div>
-          <div className="content-seeds-chips">
-            {SEED_TOPICS.map(t => (
-              <button key={t} className="research-chip"
-                onClick={() => { setTopic(t); generate(t) }}
-                disabled={loading}>
-                {t}
-              </button>
-            ))}
+          <div className="content-field">
+            <label className="content-field-label">Format</label>
+            <div className="content-chip-row content-chip-row-wrap">
+              {FORMAT_OPTIONS.map(f => (
+                <button
+                  key={f}
+                  className={`content-chip${formatFilter === f ? ' active' : ''}`}
+                  onClick={() => setFormatFilter(f)}
+                >
+                  {f === 'all' ? 'Any' : f}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="content-field">
+            <label className="content-field-label">Ideas to generate</label>
+            <div className="content-chip-row">
+              {[5, 10, 15, 20].map(n => (
+                <button
+                  key={n}
+                  className={`content-chip${count === n ? ' active' : ''}`}
+                  onClick={() => setCount(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            className="btn-primary content-generate-btn"
+            onClick={() => generate()}
+            disabled={loading || !topic.trim()}
+          >
+            {loading ? 'Generating…' : 'Generate ideas'}
+          </button>
+
+          <div className="content-seeds">
+            <p className="content-seeds-label">Or start with a topic</p>
+            <div className="content-seeds-list">
+              {SEED_TOPICS.map(t => (
+                <button
+                  key={t}
+                  className="content-seed"
+                  onClick={() => { setTopic(t); generate(t) }}
+                  disabled={loading}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="content-tabs">
-          <button className={`content-tab${activeTab === 'generate' ? ' content-tab-active' : ''}`}
-            onClick={() => setActiveTab('generate')}>
-            💡 Ideas {ideas && `(${displayedIdeas.length})`}
-          </button>
-          <button className={`content-tab${activeTab === 'saved' ? ' content-tab-active' : ''}`}
-            onClick={() => setActiveTab('saved')}>
-            📌 Saved {savedIdeas.length > 0 && `(${savedIdeas.length})`}
-          </button>
-          <button className={`content-tab${activeTab === 'guide' ? ' content-tab-active' : ''}`}
-            onClick={() => setActiveTab('guide')}>
-            📚 Framework Guide
-          </button>
-        </div>
-      </div>
+        {/* Results panel */}
+        <div className="content-results">
+          <div className="content-tabs">
+            <button
+              className={`content-tab${activeTab === 'generate' ? ' active' : ''}`}
+              onClick={() => setActiveTab('generate')}
+            >
+              Ideas {ideas ? `(${displayedIdeas.length})` : ''}
+            </button>
+            <button
+              className={`content-tab${activeTab === 'saved' ? ' active' : ''}`}
+              onClick={() => setActiveTab('saved')}
+            >
+              Saved {savedIdeas.length > 0 ? `(${savedIdeas.length})` : ''}
+            </button>
+            <button
+              className={`content-tab${activeTab === 'guide' ? ' active' : ''}`}
+              onClick={() => setActiveTab('guide')}
+            >
+              Framework guide
+            </button>
+          </div>
 
-      <div className="content-body">
-
-        {/* ── GENERATE TAB ── */}
-        {activeTab === 'generate' && (
-          <>
-            {loading && (
-              <div className="research-loading">
-                <div className="research-spinner" />
-                <div className="research-loading-text">
-                  <strong>Generating {count} content ideas...</strong>
-                  <span>Applying the organic acquisition framework to your topic</span>
+          {/* Ideas tab */}
+          {activeTab === 'generate' && (
+            <>
+              {loading && (
+                <div className="content-loading">
+                  <div className="loading-spinner" />
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>Generating {count} ideas…</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>Applying the organic acquisition framework</div>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {error && <div className="research-error">⚠️ {error}</div>}
+              {error && <div className="content-error">{error}</div>}
 
-            {ideas && !loading && (
-              <>
-                {/* Funnel view filter */}
-                <div className="content-view-filters">
-                  <span className="content-view-label">Filter by stage:</span>
-                  {FUNNEL_OPTIONS.map(f => (
-                    <button
-                      key={f.value}
-                      className={`content-filter-btn${viewFilter === f.value ? ' content-filter-active' : ''}`}
-                      onClick={() => setViewFilter(f.value)}
-                    >
-                      {f.value === 'all' ? `All (${ideas.length})` : `${f.value} (${ideas.filter(i => i.funnel_stage === f.value).length})`}
-                    </button>
-                  ))}
+              {ideas && !loading && (
+                <>
+                  <div className="content-view-bar">
+                    <span className="content-view-label">Filter:</span>
+                    {FUNNEL_OPTIONS.map(f => (
+                      <button
+                        key={f.value}
+                        className={`content-chip${viewFilter === f.value ? ' active' : ''}`}
+                        onClick={() => setViewFilter(f.value)}
+                      >
+                        {f.value === 'all'
+                          ? `All (${ideas.length})`
+                          : `${f.value} (${ideas.filter(i => i.funnel_stage === f.value).length})`}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="content-ideas-list">
+                    {displayedIdeas.map((idea, i) => {
+                      const isSaved = savedIdeas.some(s => s.hook === idea.hook)
+                      return (
+                        <div key={i} className="content-idea-card">
+                          <div className="content-idea-meta">
+                            <span className={`funnel-badge funnel-${idea.funnel_stage.toLowerCase()}`}>
+                              {idea.funnel_stage}
+                            </span>
+                            <span className="content-format-badge">{idea.format}</span>
+                            {idea.negative_frame && <span className="content-neg-badge">Negative frame</span>}
+                            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                              <button
+                                className={`btn-ghost content-action-btn${isSaved ? ' saved' : ''}`}
+                                onClick={() => saveIdea(idea)}
+                                disabled={isSaved}
+                              >
+                                {isSaved ? 'Saved' : 'Save'}
+                              </button>
+                              <button
+                                className="btn-ghost content-action-btn"
+                                onClick={() => copyIdea(idea, `idea-${i}`)}
+                              >
+                                {copied === `idea-${i}` ? 'Copied' : 'Copy'}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="content-idea-section">
+                            <div className="content-idea-section-label">Hook</div>
+                            <div className="content-hook">&ldquo;{idea.hook}&rdquo;</div>
+                          </div>
+
+                          <div className="content-idea-section">
+                            <div className="content-idea-section-label">Caption start</div>
+                            <div className="content-caption">{idea.caption_start}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
+
+              {!ideas && !loading && !error && (
+                <div className="empty-state">
+                  <svg className="empty-state-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <rect x="6" y="8" width="28" height="24" rx="4" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M12 16h16M12 22h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  <div className="empty-state-title">Enter a topic and generate ideas</div>
+                  <div className="empty-state-body">Or pick a seed topic from the left to start immediately</div>
                 </div>
+              )}
+            </>
+          )}
 
-                <div className="content-ideas-grid">
-                  {displayedIdeas.map((idea, i) => (
-                    <div key={i} className="content-idea-full-card">
-                      <div className="content-idea-full-meta">
+          {/* Saved tab */}
+          {activeTab === 'saved' && (
+            <>
+              {savedIdeas.length === 0 ? (
+                <div className="empty-state">
+                  <svg className="empty-state-icon" width="40" height="40" viewBox="0 0 40 40" fill="none">
+                    <path d="M10 8h20a2 2 0 0 1 2 2v22l-12-6-12 6V10a2 2 0 0 1 2-2z" stroke="currentColor" strokeWidth="1.5"/>
+                  </svg>
+                  <div className="empty-state-title">No saved ideas yet</div>
+                  <div className="empty-state-body">Click "Save" on any generated idea to pin it here</div>
+                </div>
+              ) : (
+                <div className="content-ideas-list">
+                  {savedIdeas.map((idea, i) => (
+                    <div key={i} className="content-idea-card">
+                      <div className="content-idea-meta">
                         <span className={`funnel-badge funnel-${idea.funnel_stage.toLowerCase()}`}>
                           {idea.funnel_stage}
                         </span>
-                        <span className="idea-format">{idea.format}</span>
-                        {idea.negative_frame && <span className="idea-tag idea-neg">⚡ Negative</span>}
-                        <div className="content-idea-actions">
+                        <span className="content-format-badge">{idea.format}</span>
+                        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
                           <button
-                            className="content-save-btn"
-                            onClick={() => saveIdea(idea)}
-                            title="Save idea"
+                            className="btn-ghost content-action-btn"
+                            onClick={() => copyIdea(idea, `saved-${i}`)}
                           >
-                            {savedIdeas.some(s => s.hook === idea.hook) ? '📌 Saved' : '📌 Save'}
+                            {copied === `saved-${i}` ? 'Copied' : 'Copy'}
                           </button>
                           <button
-                            className="research-copy-btn"
-                            onClick={() => copyIdea(idea, `idea-${i}`)}
+                            className="btn-ghost content-action-btn destructive"
+                            onClick={() => removeSaved(idea.hook)}
                           >
-                            {copied === `idea-${i}` ? '✓ Copied' : 'Copy'}
+                            Remove
                           </button>
                         </div>
                       </div>
-
-                      <div className="content-idea-hook">
-                        🎣 <strong>Hook</strong>
-                        <div className="content-hook-text">"{idea.hook}"</div>
+                      <div className="content-idea-section">
+                        <div className="content-idea-section-label">Hook</div>
+                        <div className="content-hook">&ldquo;{idea.hook}&rdquo;</div>
                       </div>
-
-                      <div className="content-idea-caption">
-                        📝 <strong>Caption start</strong>
-                        <div className="content-caption-text">{idea.caption_start}</div>
+                      <div className="content-idea-section">
+                        <div className="content-idea-section-label">Caption start</div>
+                        <div className="content-caption">{idea.caption_start}</div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </>
-            )}
+              )}
+            </>
+          )}
 
-            {!ideas && !loading && !error && (
-              <div className="research-empty">
-                <div className="research-empty-icon">✍️</div>
-                <div className="research-empty-text">Enter a topic and click Generate Ideas</div>
-                <div className="research-empty-sub">Or pick a seed topic above to start immediately</div>
-              </div>
-            )}
-          </>
-        )}
+          {/* Framework guide tab */}
+          {activeTab === 'guide' && (
+            <div className="content-guide">
+              <h2 className="content-guide-title">Organic posting framework</h2>
+              <p className="content-guide-intro">
+                Every post belongs to a funnel stage. Understanding the mix is what separates random posting from a system that converts followers into booked calls.
+              </p>
 
-        {/* ── SAVED TAB ── */}
-        {activeTab === 'saved' && (
-          <>
-            {savedIdeas.length === 0 ? (
-              <div className="research-empty">
-                <div className="research-empty-icon">📌</div>
-                <div className="research-empty-text">No saved ideas yet</div>
-                <div className="research-empty-sub">Click "📌 Save" on any idea to pin it here</div>
-              </div>
-            ) : (
-              <div className="content-ideas-grid">
-                {savedIdeas.map((idea, i) => (
-                  <div key={i} className="content-idea-full-card">
-                    <div className="content-idea-full-meta">
-                      <span className={`funnel-badge funnel-${idea.funnel_stage.toLowerCase()}`}>
-                        {idea.funnel_stage}
-                      </span>
-                      <span className="idea-format">{idea.format}</span>
-                      {idea.negative_frame && <span className="idea-tag idea-neg">⚡ Negative</span>}
-                      <div className="content-idea-actions">
-                        <button className="research-copy-btn"
-                          onClick={() => copyIdea(idea, `saved-${i}`)}>
-                          {copied === `saved-${i}` ? '✓ Copied' : 'Copy'}
-                        </button>
-                        <button className="content-remove-btn"
-                          onClick={() => removeSaved(idea.hook)}>
-                          ✕ Remove
-                        </button>
-                      </div>
+              <div className="content-guide-cards">
+                {FUNNEL_GUIDE.map(g => (
+                  <div key={g.stage} className={`content-guide-card guide-${g.cls}`}>
+                    <div className="content-guide-card-head">
+                      <span className={`funnel-badge funnel-${g.cls}`}>{g.stage}</span>
+                      <strong>{g.title}</strong>
                     </div>
-                    <div className="content-idea-hook">
-                      🎣 <strong>Hook</strong>
-                      <div className="content-hook-text">"{idea.hook}"</div>
+                    <p className="content-guide-desc">{g.desc}</p>
+                    <div className="content-guide-meta">
+                      <span className="content-guide-meta-label">Best formats:</span> {g.formats}
                     </div>
-                    <div className="content-idea-caption">
-                      📝 <strong>Caption start</strong>
-                      <div className="content-caption-text">{idea.caption_start}</div>
+                    <div className="content-guide-example">
+                      <span className="content-guide-meta-label">Example hook:</span>
+                      <em className="content-guide-quote">{g.example}</em>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-          </>
-        )}
 
-        {/* ── FRAMEWORK GUIDE TAB ── */}
-        {activeTab === 'guide' && (
-          <div className="content-guide">
-            <h2 className="content-guide-title">Organic Posting Framework</h2>
-            <p className="content-guide-intro">
-              Every post belongs to a funnel stage. Understanding the mix is what separates random posting from a system that converts followers into booked calls.
-            </p>
-
-            {FUNNEL_GUIDE.map(g => (
-              <div key={g.stage} className={`content-guide-card content-guide-${g.stage.toLowerCase()}`}>
-                <div className="content-guide-head">
-                  <span className={`funnel-badge funnel-${g.stage.toLowerCase()}`}>{g.stage}</span>
-                  <strong>{g.title}</strong>
-                </div>
-                <p className="content-guide-desc">{g.desc}</p>
-                <div className="content-guide-formats">
-                  <span className="content-guide-formats-label">Best formats:</span> {g.formats}
-                </div>
-                <div className="content-guide-example">
-                  <span className="content-guide-example-label">Example hook:</span>
-                  <em>"{g.example}"</em>
+              <div className="content-guide-mix">
+                <h3 className="content-guide-mix-title">The 30/30/30/10 mix</h3>
+                <div className="content-mix-grid">
+                  {[
+                    { pct: '30%', type: 'Educational', desc: 'Tips, how-tos, frameworks' },
+                    { pct: '30%', type: 'Relatable', desc: 'Pain points, shared truths, stories' },
+                    { pct: '30%', type: 'Inspirational', desc: 'Results, transformations, proof' },
+                    { pct: '10%', type: 'Promotional', desc: 'Offer, CTA, booking' },
+                  ].map(m => (
+                    <div key={m.type} className="content-mix-cell">
+                      <span className="content-mix-pct">{m.pct}</span>
+                      <span className="content-mix-type">{m.type}</span>
+                      <span className="content-mix-desc">{m.desc}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
 
-            <div className="content-guide-mix">
-              <h3>The 30/30/30/10 Mix</h3>
-              <div className="content-mix-grid">
-                <div className="content-mix-item">
-                  <span className="content-mix-pct">30%</span>
-                  <span className="content-mix-type">Educational</span>
-                  <span className="content-mix-desc">Tips, how-tos, frameworks</span>
-                </div>
-                <div className="content-mix-item">
-                  <span className="content-mix-pct">30%</span>
-                  <span className="content-mix-type">Relatable</span>
-                  <span className="content-mix-desc">Pain points, shared truths, stories</span>
-                </div>
-                <div className="content-mix-item">
-                  <span className="content-mix-pct">30%</span>
-                  <span className="content-mix-type">Inspirational</span>
-                  <span className="content-mix-desc">Results, transformations, proof</span>
-                </div>
-                <div className="content-mix-item">
-                  <span className="content-mix-pct">10%</span>
-                  <span className="content-mix-type">Promotional</span>
-                  <span className="content-mix-desc">Offer, CTA, booking</span>
-                </div>
+              <div className="content-guide-cadence">
+                <h3 className="content-guide-mix-title">Daily cadence target</h3>
+                <p className="content-guide-cadence-text">
+                  3–5 posts per day across Instagram + LinkedIn. Reels on Instagram get the most organic reach. Carousels save well and get revisited. Stories bridge the gap daily.
+                </p>
               </div>
             </div>
-
-            <div className="content-guide-cadence">
-              <h3>Daily Cadence Target</h3>
-              <p>3–5 posts per day across Instagram + LinkedIn. Reels on Instagram get the most organic reach. Carousels save well and get revisited. Stories bridge the gap daily.</p>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )
