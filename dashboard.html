@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Intelligence Brief</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: rgba(255,255,255,0.06);
+    --surface-hover: rgba(255,255,255,0.09);
+    --border: rgba(255,255,255,0.08);
+    --text: #f5f5f7;
+    --muted: rgba(255,255,255,0.45);
+    --accent: #2997ff;
+    --pill-active: rgba(41,151,255,0.18);
+    --radius: 16px;
+    --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+  }
+
+  html { background: var(--bg); color: var(--text); font-family: var(--font); -webkit-font-smoothing: antialiased; }
+
+  body { min-height: 100vh; }
+
+  /* ── Topbar ── */
+  .topbar {
+    position: sticky; top: 0; z-index: 100;
+    padding: 16px 24px;
+    background: rgba(10,10,10,0.7);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+
+  .topbar h1 {
+    font-size: 17px; font-weight: 600;
+    letter-spacing: -0.022em; line-height: 1;
+    flex: 1; min-width: 160px;
+  }
+
+  .topbar h1 span { color: var(--muted); font-weight: 400; }
+
+  .date-nav { display: flex; align-items: center; gap: 6px; }
+
+  .btn-icon {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); cursor: pointer; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 120ms ease, transform 80ms ease;
+  }
+  .btn-icon:active { transform: scale(0.93); background: var(--surface-hover); }
+
+  .date-label {
+    font-size: 13px; font-weight: 500; color: var(--muted);
+    min-width: 90px; text-align: center;
+  }
+
+  .today-btn {
+    padding: 5px 12px; border-radius: 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--accent); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: background 120ms ease, transform 80ms ease;
+    font-family: var(--font);
+  }
+  .today-btn:active { transform: scale(0.95); }
+
+  /* ── Pills ── */
+  .pills {
+    padding: 12px 24px;
+    display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none;
+  }
+  .pills::-webkit-scrollbar { display: none; }
+
+  .pill {
+    padding: 6px 14px; border-radius: 20px; white-space: nowrap;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--muted); font-size: 13px; font-weight: 500;
+    cursor: pointer; font-family: var(--font);
+    transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 80ms ease;
+  }
+  .pill:active { transform: scale(0.95); }
+  .pill.active {
+    background: var(--pill-active); border-color: rgba(41,151,255,0.35);
+    color: var(--accent);
+  }
+
+  /* ── Grid ── */
+  .grid {
+    padding: 0 24px 48px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 12px;
+  }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: background 150ms ease, transform 150ms ease;
+    cursor: pointer;
+  }
+  .card:hover { background: var(--surface-hover); }
+  .card:active { transform: scale(0.99); }
+
+  .card-head {
+    padding: 16px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-meta {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  }
+
+  .badge {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+    padding: 2px 8px; border-radius: 6px; text-transform: uppercase;
+  }
+
+  .badge-imm  { background: rgba(52,199,89,0.12);  color: #34c759; }
+  .badge-leg  { background: rgba(255,159,10,0.12); color: #ff9f0a; }
+  .badge-gen  { background: rgba(41,151,255,0.12); color: #2997ff; }
+  .badge-paid { background: rgba(191,90,242,0.12); color: #bf5af2; }
+  .badge-ind  { background: rgba(255,69,58,0.12);  color: #ff453a; }
+
+  .source-name { font-size: 11px; color: var(--muted); font-weight: 500; }
+
+  .card-title {
+    font-size: 14px; font-weight: 600; line-height: 1.35;
+    letter-spacing: -0.01em; color: var(--text);
+  }
+  .card-title a { color: inherit; text-decoration: none; }
+  .card-title a:hover { color: var(--accent); }
+
+  .card-body { padding: 14px 16px; display: grid; gap: 10px; }
+
+  .field-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 3px;
+  }
+
+  .field-text {
+    font-size: 13px; line-height: 1.5; color: rgba(255,255,255,0.78);
+  }
+
+  .action-steps {
+    font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.78);
+    white-space: pre-line;
+  }
+
+  /* ── States ── */
+  .state {
+    padding: 80px 24px; text-align: center; color: var(--muted);
+    font-size: 15px; line-height: 1.6;
+  }
+
+  .state .icon { font-size: 36px; margin-bottom: 12px; }
+  .state h2 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+
+  .spinner {
+    width: 24px; height: 24px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .count-chip {
+    font-size: 11px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 1px 6px; color: var(--muted); margin-left: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🧠 Intelligence Brief <span id="dateDisplay"></span></h1>
+  <div class="date-nav">
+    <button class="btn-icon" id="prevDay" title="Previous day">‹</button>
+    <div class="date-label" id="dateNav"></div>
+    <button class="btn-icon" id="nextDay" title="Next day">›</button>
+    <button class="today-btn" id="todayBtn">Today</button>
+  </div>
+</div>
+
+<div class="pills" id="pills"></div>
+<div id="root"></div>
+
+<script>
+const SUPABASE_URL = 'https://ijmryaivxpnrbbkqniiu.supabase.co'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlqbXJ5YWl2eHBucmJia3FuaWl1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NzIyMzYwOCwiZXhwIjoyMTAyNzk5NjA4fQ.g1B_UWbtJu-iwlR-82uSrN8M784eLi6382ZZvt5VNo4'
+
+const CATEGORIES = {
+  'All': null,
+  '📋 Immigration': 'Immigration News',
+  '⚖️ Legal Mktg': 'Legal Marketing',
+  '📣 General Mktg': 'General Marketing',
+  '🎯 Paid Media': 'Paid Media',
+  '📊 Industry': 'Industry Research',
+}
+
+const BADGE_CLASS = {
+  'Immigration News': 'badge-imm',
+  'Legal Marketing':  'badge-leg',
+  'General Marketing':'badge-gen',
+  'Paid Media':       'badge-paid',
+  'Industry Research':'badge-ind',
+}
+
+const BADGE_LABEL = {
+  'Immigration News': 'Immigration',
+  'Legal Marketing':  'Legal Mktg',
+  'General Marketing':'Marketing',
+  'Paid Media':       'Paid Media',
+  'Industry Research':'Research',
+}
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
+
+let currentDate = new Date().toISOString().split('T')[0]
+let activeCategory = null
+let allInsights = []
+
+// ── Date nav ──────────────────────────────────────────────
+function updateDateLabel() {
+  const d = new Date(currentDate + 'T12:00:00')
+  const today = new Date().toISOString().split('T')[0]
+  const isToday = currentDate === today
+  const label = isToday ? 'Today' : d.toLocaleDateString('en-GB', { day:'numeric', month:'short' })
+  document.getElementById('dateNav').textContent = label
+  document.getElementById('dateDisplay').textContent = isToday ? '' : '· ' + d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' })
+  document.getElementById('todayBtn').style.opacity = isToday ? '0.4' : '1'
+  document.getElementById('todayBtn').style.pointerEvents = isToday ? 'none' : 'auto'
+}
+
+function shiftDate(days) {
+  const d = new Date(currentDate + 'T12:00:00')
+  d.setDate(d.getDate() + days)
+  const newDate = d.toISOString().split('T')[0]
+  const today = new Date().toISOString().split('T')[0]
+  if (newDate <= today) {
+    currentDate = newDate
+    updateDateLabel()
+    loadInsights()
+  }
+}
+
+document.getElementById('prevDay').addEventListener('click', () => shiftDate(-1))
+document.getElementById('nextDay').addEventListener('click', () => shiftDate(1))
+document.getElementById('todayBtn').addEventListener('click', () => {
+  currentDate = new Date().toISOString().split('T')[0]
+  updateDateLabel()
+  loadInsights()
+})
+
+// ── Pills ──────────────────────────────────────────────────
+function renderPills(counts) {
+  const container = document.getElementById('pills')
+  container.innerHTML = ''
+  Object.entries(CATEGORIES).forEach(([label, value]) => {
+    const count = value === null
+      ? allInsights.length
+      : (counts[value] || 0)
+    const pill = document.createElement('button')
+    pill.className = 'pill' + (activeCategory === value ? ' active' : '')
+    pill.innerHTML = `${label} <span class="count-chip">${count}</span>`
+    pill.addEventListener('click', () => {
+      activeCategory = value
+      renderPills(counts)
+      renderGrid()
+    })
+    container.appendChild(pill)
+  })
+}
+
+// ── Grid ──────────────────────────────────────────────────
+function toStr(val) {
+  if (!val) return ''
+  if (Array.isArray(val)) return val.join('\n')
+  return String(val)
+}
+
+function renderGrid() {
+  const root = document.getElementById('root')
+  const items = activeCategory
+    ? allInsights.filter(i => i.source_category === activeCategory)
+    : allInsights
+
+  if (items.length === 0) {
+    root.innerHTML = `<div class="state"><div class="icon">🔍</div><h2>No insights</h2><p>Nothing found for this filter.</p></div>`
+    return
+  }
+
+  root.innerHTML = `<div class="grid">${items.map(renderCard).join('')}</div>`
+}
+
+function renderCard(insight) {
+  const badgeClass = BADGE_CLASS[insight.source_category] || 'badge-gen'
+  const badgeLabel = BADGE_LABEL[insight.source_category] || insight.source_category
+  const summary = toStr(insight.summary)
+  const impact = toStr(insight.impact_analysis)
+  const action = toStr(insight.action_strategy)
+
+  return `
+  <div class="card">
+    <div class="card-head">
+      <div class="card-meta">
+        <span class="badge ${badgeClass}">${badgeLabel}</span>
+        <span class="source-name">${insight.source_origin}</span>
+      </div>
+      <div class="card-title">
+        <a href="${insight.source_url}" target="_blank" rel="noopener">${insight.headline}</a>
+      </div>
+    </div>
+    <div class="card-body">
+      ${summary ? `<div><div class="field-label">Summary</div><div class="field-text">${summary}</div></div>` : ''}
+      ${impact ? `<div><div class="field-label">Impact</div><div class="field-text">${impact}</div></div>` : ''}
+      ${action ? `<div><div class="field-label">Action Strategy</div><div class="action-steps">${action}</div></div>` : ''}
+    </div>
+  </div>`
+}
+
+// ── Load ──────────────────────────────────────────────────
+async function loadInsights() {
+  document.getElementById('root').innerHTML = `<div class="state"><div class="spinner"></div><p>Loading insights…</p></div>`
+  document.getElementById('pills').innerHTML = ''
+
+  const { data, error } = await db
+    .from('news_insights')
+    .select('headline,source_url,source_origin,source_category,summary,impact_analysis,action_strategy,run_date')
+    .eq('run_date', currentDate)
+    .order('source_category')
+
+  if (error) {
+    document.getElementById('root').innerHTML = `<div class="state"><div class="icon">⚠️</div><h2>Error</h2><p>${error.message}</p></div>`
+    return
+  }
+
+  if (!data || data.length === 0) {
+    document.getElementById('root').innerHTML = `<div class="state"><div class="icon">📭</div><h2>No data for this day</h2><p>The pipeline hasn't run yet, or nothing was found.</p></div>`
+    document.getElementById('pills').innerHTML = ''
+    return
+  }
+
+  allInsights = data
+  const counts = {}
+  data.forEach(i => { counts[i.source_category] = (counts[i.source_category] || 0) + 1 })
+  renderPills(counts)
+  renderGrid()
+}
+
+updateDateLabel()
+loadInsights()
+</script>
+</body>
+</html>
