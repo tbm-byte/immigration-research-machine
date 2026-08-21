@@ -12,6 +12,16 @@ function persistSaved(leads: FirmLead[]) {
   try { localStorage.setItem(SAVED_KEY, JSON.stringify(leads)) } catch {}
 }
 
+const DQ_REASONS = [
+  'Too large',
+  'Wrong niche',
+  'Already a client',
+  'Bad signals',
+  'Already contacted',
+  'Competitor conflict',
+] as const
+type DQReason = typeof DQ_REASONS[number]
+
 const PRESET_KEYWORDS = [
   'immigration attorney',
   'immigration lawyer',
@@ -69,11 +79,48 @@ export default function LeadFinder() {
   const [sortBy,      setSortBy]      = useState<'score' | 'followers' | 'name'>('score')
   const [filterTier,  setFilterTier]  = useState<'all' | 'high' | 'mid' | 'low'>('all')
   const [expandedDm,  setExpandedDm]  = useState<number | null>(null)
-  const [activeTab,      setActiveTab]      = useState<'results' | 'saved'>('results')
+  const [activeTab,      setActiveTab]      = useState<'results' | 'saved' | 'dq'>('results')
   const [savedLeads,     setSavedLeads]     = useState<FirmLead[]>([])
   const [hideSaved,      setHideSaved]      = useState(true)
+  const [dqIds,          setDqIds]          = useState<Set<string>>(new Set())
+  const [dqPicker,       setDqPicker]       = useState<number | null>(null)   // index of lead with picker open
+  const [dqLeads,        setDqLeads]        = useState<Array<FirmLead & { dqReason: string; dqId?: string }>>([])
+  const [dqFiltered,     setDqFiltered]     = useState(0)
+  const [topDQReason,    setTopDQReason]    = useState<string | null>(null)
 
   useEffect(() => { setSavedLeads(loadSaved()) }, [])
+
+  // Load existing DQ data from server (for count/reason display)
+  useEffect(() => {
+    fetch('/api/dq')
+      .then(r => r.json())
+      .then(d => {
+        if (d.leads) {
+          setDqLeads(d.leads.map((row: { firm_name: string; platform: string; social_handle: string | null; reason: string; id: string } & FirmLead) => ({
+            firm_name: row.firm_name,
+            platform: row.platform as FirmLead['platform'],
+            social_handle: row.social_handle ?? null,
+            website_url: null,
+            profile_url: null,
+            follower_count: null,
+            location: null,
+            bio: null,
+            contact_name: null,
+            dqReason: row.reason,
+            dqId: row.id,
+          })))
+          setDqIds(new Set(d.leads.map((r: { platform: string; social_handle: string | null; firm_name: string }) =>
+            `${r.platform}:${(r.social_handle ?? r.firm_name).toLowerCase()}`
+          )))
+          setTopDQReason(
+            d.reasonCounts && Object.keys(d.reasonCounts).length > 0
+              ? Object.entries(d.reasonCounts as Record<string, number>).sort((a, b) => b[1] - a[1])[0][0]
+              : null
+          )
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   function leadKey(lead: FirmLead) {
     return `${lead.platform}:${lead.social_handle ?? lead.firm_name}`
@@ -102,6 +149,51 @@ export default function LeadFinder() {
     })
   }
 
+  async function dqLead(lead: FirmLead, reason: DQReason) {
+    const key = leadKey(lead)
+    // Optimistic update
+    setDqIds(prev => new Set([...prev, key]))
+    setDqLeads(prev => [...prev, { ...lead, dqReason: reason }])
+    setDqPicker(null)
+    try {
+      const res = await fetch('/api/dq', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firm_name: lead.firm_name,
+          platform: lead.platform,
+          social_handle: lead.social_handle ?? null,
+          website_url: lead.website_url ?? null,
+          reason,
+        }),
+      })
+      if (!res.ok) throw new Error('DQ save failed')
+      // Update top reason if this new reason is now dominant
+      const reasonMap: Record<string, number> = {}
+      dqLeads.forEach(d => { reasonMap[d.dqReason] = (reasonMap[d.dqReason] ?? 0) + 1 })
+      reasonMap[reason] = (reasonMap[reason] ?? 0) + 1
+      const top = Object.entries(reasonMap).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
+      setTopDQReason(top)
+    } catch {
+      // Revert on failure
+      setDqIds(prev => { const next = new Set(prev); next.delete(key); return next })
+      setDqLeads(prev => prev.filter(d => leadKey(d) !== key))
+    }
+  }
+
+  async function undoDQ(lead: FirmLead & { dqReason: string; dqId?: string }) {
+    const key = leadKey(lead)
+    setDqIds(prev => { const next = new Set(prev); next.delete(key); return next })
+    setDqLeads(prev => prev.filter(d => leadKey(d) !== key))
+    if (lead.dqId) {
+      await fetch(`/api/dq?id=${lead.dqId}`, { method: 'DELETE' }).catch(() => {})
+    }
+  }
+
+  function isDQ(lead: FirmLead) {
+    return dqIds.has(leadKey(lead))
+  }
+
   function togglePlatform(p: Platform) {
     setPlatforms(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
   }
@@ -124,11 +216,13 @@ export default function LeadFinder() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keywords, location, platforms, limit }),
       })
-      const data = await res.json() as { leads?: FirmLead[]; error?: string; warnings?: string[] }
+      const data = await res.json() as { leads?: FirmLead[]; error?: string; warnings?: string[]; dqFiltered?: number; topDQReason?: string }
       if (!res.ok || data.error) {
         setError(data.error ?? 'Something went wrong')
       } else {
         setLeads(data.leads ?? [])
+        setDqFiltered(data.dqFiltered ?? 0)
+        if (data.topDQReason) setTopDQReason(data.topDQReason)
         if (data.warnings?.length) console.warn('Lead search warnings:', data.warnings)
       }
     } catch (err) {
@@ -170,6 +264,7 @@ export default function LeadFinder() {
   const savedHiddenCount = hideSaved ? leads.filter(l => isSaved(l)).length : 0
 
   const displayLeads = [...leads]
+    .filter(l => !isDQ(l))                                                    // always hide DQ'd
     .filter(l => filterTier === 'all' || scoreTier(leadScore(l)) === filterTier)
     .filter(l => !hideSaved || !isSaved(l))
     .sort((a, b) => {
@@ -304,19 +399,33 @@ export default function LeadFinder() {
         )}
 
         {/* Tab bar */}
-        {(leads.length > 0 || savedLeads.length > 0) && (
+        {(leads.length > 0 || savedLeads.length > 0 || dqLeads.length > 0) && (
           <div className="research-tabs" style={{ marginBottom: 0 }}>
             <button
               onClick={() => setActiveTab('results')}
               className={`research-tab${activeTab === 'results' ? ' research-tab-active' : ''}`}
             >
-              Search Results {leads.length > 0 && `(${leads.length})`}
+              Search Results {leads.length > 0 && `(${displayLeads.length})`}
             </button>
             <button
               onClick={() => setActiveTab('saved')}
               className={`research-tab${activeTab === 'saved' ? ' research-tab-active' : ''}`}
             >
-              Saved Leads {savedLeads.length > 0 && `(${savedLeads.length})`}
+              Saved {savedLeads.length > 0 && `(${savedLeads.length})`}
+            </button>
+            <button
+              onClick={() => setActiveTab('dq')}
+              className={`research-tab${activeTab === 'dq' ? ' research-tab-active' : ''}`}
+            >
+              Disqualified {dqLeads.length > 0 && `(${dqLeads.length})`}
+              {topDQReason && (
+                <span style={{
+                  marginLeft: 6, fontSize: 10, background: 'rgba(255,59,48,0.1)',
+                  color: 'var(--red)', padding: '1px 5px', borderRadius: 3, fontWeight: 500,
+                }}>
+                  AI trained
+                </span>
+              )}
             </button>
           </div>
         )}
@@ -425,6 +534,71 @@ export default function LeadFinder() {
           </div>
         )}
 
+        {/* DQ Tab */}
+        {activeTab === 'dq' && (
+          <div className="lead-results-panel">
+            {dqLeads.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-icon">
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                    <circle cx="16" cy="16" r="12" stroke="currentColor" strokeWidth="1.6"/>
+                    <path d="M11 11l10 10M21 11L11 21" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  </svg>
+                </div>
+                <div className="empty-state-title">No disqualified leads yet</div>
+                <div className="empty-state-body">Click DQ on any search result to train the AI to filter similar firms from future searches.</div>
+              </div>
+            ) : (
+              <>
+                {/* AI Training Summary */}
+                <div style={{
+                  padding: '12px 16px', background: 'var(--bg-accent)',
+                  border: '1px solid rgba(0,113,227,0.15)', borderRadius: 'var(--radius-md)',
+                  marginBottom: 16, display: 'flex', gap: 16, alignItems: 'flex-start',
+                }}>
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ marginTop: 1, flexShrink: 0, color: 'var(--blue)' }}>
+                    <circle cx="9" cy="9" r="7.5" stroke="currentColor" strokeWidth="1.4"/>
+                    <path d="M9 8v5M9 6.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>
+                      AI is learning from {dqLeads.length} disqualified lead{dqLeads.length !== 1 ? 's' : ''}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                      {topDQReason
+                        ? <>Top signal: <strong>&ldquo;{topDQReason}&rdquo;</strong> — future searches auto-filter similar firms and adjust scoring weights.</>
+                        : 'DQ reasons train the scorer to surface better-fit leads over time.'}
+                      {dqFiltered > 0 && <> Last search pre-filtered <strong>{dqFiltered} firm{dqFiltered !== 1 ? 's' : ''}</strong> before results.</>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lead-table">
+                  <div className="lead-table-head">
+                    <span>Firm</span><span>Platform</span><span>DQ Reason</span><span></span>
+                  </div>
+                  {dqLeads.map((lead, i) => (
+                    <div key={i} className="lead-row" style={{ opacity: 0.7 }}>
+                      <span className="lead-firm-name" style={{ gridColumn: '1' }}>{lead.firm_name}</span>
+                      <span>
+                        <span className={`kc-platform-badge kc-platform-${lead.platform}`}>
+                          {lead.platform === 'instagram' ? 'IG' : lead.platform === 'linkedin' ? 'LI' : 'FB'}
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 12, color: 'var(--red)', fontWeight: 500 }}>{lead.dqReason}</span>
+                      <span>
+                        <button className="kc-btn" onClick={() => undoDQ(lead)} title="Un-disqualify">
+                          Undo
+                        </button>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Results */}
         {activeTab === 'results' && leads.length > 0 && (
           <div className="lead-results-panel">
@@ -438,7 +612,12 @@ export default function LeadFinder() {
                   {hotCount > 0 && ` · ${hotCount} hot leads`}
                   {savedHiddenCount > 0 && (
                     <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>
-                      {' '}· {savedHiddenCount} already saved
+                      {' '}· {savedHiddenCount} saved
+                    </span>
+                  )}
+                  {(dqFiltered + leads.filter(l => isDQ(l)).length) > 0 && (
+                    <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                      {' '}· {dqFiltered + leads.filter(l => isDQ(l)).length} DQ&apos;d
                     </span>
                   )}
                 </span>
@@ -575,7 +754,7 @@ export default function LeadFinder() {
                         ) : '—'}
                       </span>
 
-                      <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      <span style={{ display: 'flex', gap: 4, flexWrap: 'wrap', position: 'relative' }}>
                         {isFb && lead.dm && (
                           <button
                             className="kc-btn"
@@ -600,6 +779,43 @@ export default function LeadFinder() {
                         >
                           {added ? 'Added' : '+ Pipeline'}
                         </button>
+                        {/* DQ button + reason picker */}
+                        <button
+                          className="kc-btn"
+                          style={{ color: 'var(--red)', borderColor: 'rgba(255,59,48,0.3)' }}
+                          onClick={() => setDqPicker(dqPicker === i ? null : i)}
+                          title="Disqualify — train AI to avoid similar firms"
+                        >
+                          DQ
+                        </button>
+                        {dqPicker === i && (
+                          <div style={{
+                            position: 'absolute', right: 0, top: '100%', marginTop: 4,
+                            background: 'var(--bg-surface)', border: '1px solid var(--border)',
+                            borderRadius: 'var(--radius-sm)', boxShadow: 'var(--shadow-md)',
+                            zIndex: 50, minWidth: 170, padding: '6px 0',
+                          }}>
+                            <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', padding: '4px 12px 2px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                              DQ Reason
+                            </div>
+                            {DQ_REASONS.map(reason => (
+                              <button
+                                key={reason}
+                                onClick={() => dqLead(lead, reason)}
+                                style={{
+                                  display: 'block', width: '100%', textAlign: 'left',
+                                  padding: '6px 12px', background: 'none', border: 'none',
+                                  fontSize: 13, color: 'var(--text-primary)', cursor: 'pointer',
+                                  lineHeight: 1.4,
+                                }}
+                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-subtle)')}
+                                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                              >
+                                {reason}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </span>
                     </div>
 
