@@ -1,9 +1,8 @@
 import { Suspense } from 'react'
-import Link from 'next/link'
 import { getInsights } from '@/lib/db'
 import Dashboard from './components/Dashboard'
 import DateNav from './components/DateNav'
-import KbChat from './components/KbChat'
+import RunBriefButton from './components/RunBriefButton'
 
 export const revalidate = 300
 
@@ -16,38 +15,37 @@ export default async function Page({ searchParams }: Props) {
 
   const insights = await getInsights(date)
 
-  const dateLabel = date === today
-    ? ''
-    : new Date(date + 'T12:00:00').toLocaleDateString('en-GB', {
-        weekday: 'short', day: 'numeric', month: 'long',
-      })
-
   return (
-    <>
-      <header className="topbar">
-        <div className="topbar-title">
-          🧠 Intelligence Brief {dateLabel && <span>· {dateLabel}</span>}
+    <div className="page-container">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 className="page-title">Intelligence Brief</h1>
+          <p className="page-sub">Daily immigration news briefing for law firm outreach</p>
         </div>
-        <Suspense>
-          <DateNav date={date} />
-        </Suspense>
-        <Link href="/research" className="nav-link">🔬 Research</Link>
-        <Link href="/content" className="nav-link">✍️ Content</Link>
-        <Link href="/leads" className="nav-link">🔍 Leads</Link>
-        <Link href="/outreach" className="nav-link">📋 Pipeline</Link>
-      </header>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <RunBriefButton />
+          <Suspense>
+            <DateNav date={date} />
+          </Suspense>
+        </div>
+      </div>
 
       {insights.length === 0 ? (
-        <div className="state">
-          <div className="state-icon">📭</div>
-          <h2>No insights yet</h2>
-          <p>Run <code>npm start</code> in your terminal to populate today&apos;s brief.</p>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+              <rect x="6" y="4" width="20" height="24" rx="3" stroke="currentColor" strokeWidth="1.6"/>
+              <path d="M11 11h10M11 16h10M11 21h6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </div>
+          <div className="empty-state-title">No insights yet</div>
+          <div className="empty-state-body">
+            Hit <strong>Run Brief</strong> above to fetch and analyze today&apos;s immigration news.
+          </div>
         </div>
       ) : (
         <Dashboard insights={insights} date={date} />
       )}
-
-      <KbChat />
-    </>
+    </div>
   )
 }
