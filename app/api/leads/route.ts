@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { scrapeLeads } from '@/src/lead-scraper'
 import { scrapeFbAdsLeads } from '@/src/fb-ads-scraper'
 import { getDQKeys, getDQReasonCounts, dqKey } from '@/src/supabase'
+import { checkMetaAds } from '@/src/meta-ads-check'
 
 export async function POST(req: NextRequest) {
   const body = await req.json() as {
@@ -59,8 +60,38 @@ export async function POST(req: NextRequest) {
         : Promise.resolve([]),
     ])
 
+    let igLeads = socialLeads.status === 'fulfilled'
+      ? socialLeads.value.filter(l => l.platform === 'instagram')
+      : []
+
+    // Meta Ads check for IG leads — uses Apify (same key, ~$0.0075/firm)
+    if (igLeads.length > 0 && process.env.APIFY_API_KEY) {
+      try {
+        const firms = igLeads.map(l => ({
+          key:        `${l.platform}:${l.social_handle ?? l.firm_name}`,
+          searchTerm: l.social_handle ?? l.firm_name,
+        }))
+        const metaMap = await checkMetaAds(firms)
+        igLeads = igLeads.map(l => {
+          const key = `${l.platform}:${l.social_handle ?? l.firm_name}`
+          const m = metaMap.get(key)
+          if (!m) return l
+          return {
+            ...l,
+            meta_ads_active: m.meta_ads_active,
+            fb_ad_count:     m.fb_ad_count,
+            fb_page_url:     m.fb_page_url,
+            fb_page_name:    m.fb_page_name,
+          }
+        })
+      } catch (err) {
+        console.warn('Meta Ads check failed (non-fatal):', (err as Error).message)
+      }
+    }
+
     const allLeads = [
-      ...(socialLeads.status === 'fulfilled' ? socialLeads.value : []),
+      ...igLeads,
+      ...(socialLeads.status === 'fulfilled' ? socialLeads.value.filter(l => l.platform !== 'instagram') : []),
       ...(fbLeads.status     === 'fulfilled' ? fbLeads.value     : []),
     ]
 

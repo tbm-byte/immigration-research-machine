@@ -33,6 +33,12 @@ export interface FirmLead {
   observation?:    string         // observation line for your records
   ad_phone?:       string | null  // phone number found in the ad body
   ad_url?:         string | null  // permalink to the ad in the Ads Library
+
+  // ── Meta Ads check (IG leads) ─────────────────────────────────────────
+  meta_ads_active?:  boolean       // currently running Meta ads
+  fb_ad_count?:      number        // number of active ads found
+  fb_page_url?:      string | null // link to their Facebook page
+  fb_page_name?:     string | null // FB page name (may differ from IG name)
 }
 
 const APIFY_BASE = 'https://api.apify.com/v2'

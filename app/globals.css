@@ -2636,3 +2636,75 @@ body:has(.login-shell) .utility-bar { display: none; }
   .content-composer { position: static; }
   .content-mix-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ── Skeleton / Loading Animations ──────────────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-text {
+  height: 13px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.skeleton-card-header {
+  height: 16px;
+  width: 60%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-card-line {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-card-line.short { width: 40%; }
+.skeleton-card-line.medium { width: 70%; }
+.skeleton-card-line.long { width: 90%; }
+
+.lead-skeleton-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 2fr 1fr 2fr 1.5fr 1fr;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+
+.lead-skeleton-cell {
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--bg-subtle) 25%, var(--border) 50%, var(--bg-subtle) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%       { opacity: 1;   transform: scale(1.15); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

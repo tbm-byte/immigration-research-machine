@@ -389,6 +389,36 @@ export default function LeadFinder() {
           </div>
         </div>
 
+        {/* Loading skeletons */}
+        {loading && (
+          <div className="lead-results-panel" style={{ marginTop: 0 }}>
+            <div className="lead-results-header" style={{ paddingBottom: 12 }}>
+              <div className="skeleton-text" style={{ width: 180 }} />
+            </div>
+            <div className="lead-table">
+              <div className="lead-table-head">
+                <span>Firm</span><span>Match</span><span>Platform</span>
+                <span>Handle</span><span>Followers</span><span>Location</span><span>Website</span><span></span>
+              </div>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="lead-skeleton-row" style={{ animationDelay: `${i * 0.08}s` }}>
+                  {[70, 40, 30, 55, 35, 55, 45, 30].map((w, j) => (
+                    <div key={j} className="lead-skeleton-cell" style={{ width: `${w}%`, animationDelay: `${(i + j) * 0.05}s` }} />
+                  ))}
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: 'center', padding: '20px 0 8px', fontSize: 13, color: 'var(--text-tertiary)' }}>
+              Searching up to {limit} firms across {platforms.join(', ')}…
+              {platforms.includes('instagram') && (
+                <span style={{ display: 'block', marginTop: 4, fontSize: 12 }}>
+                  Also checking Meta Ads Library for active ad campaigns…
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Error */}
         {error && (
           <div className="lead-error">
@@ -694,6 +724,19 @@ export default function LeadFinder() {
                             {lead.wave}
                           </span>
                         )}
+                        {lead.meta_ads_active && (
+                          <span
+                            title={`Running ${lead.fb_ad_count ?? '?'} active Meta ad${(lead.fb_ad_count ?? 0) !== 1 ? 's' : ''}${lead.fb_page_name ? ` · FB page: ${lead.fb_page_name}` : ''}`}
+                            style={{
+                              fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 3,
+                              background: 'rgba(59,130,246,0.12)', color: '#3B82F6',
+                              marginRight: 5, verticalAlign: 'middle', letterSpacing: '0.03em',
+                              textTransform: 'uppercase',
+                            }}
+                          >
+                            Meta Ads {lead.fb_ad_count != null ? `×${lead.fb_ad_count}` : '✓'}
+                          </span>
+                        )}
                         {lead.firm_name}
                       </span>
 
@@ -713,12 +756,18 @@ export default function LeadFinder() {
                         </span>
                       </span>
 
-                      <span>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                         {lead.profile_url ? (
                           <a href={lead.profile_url} target="_blank" rel="noopener noreferrer" className="kc-link">
                             {lead.social_handle ? `@${lead.social_handle}` : 'View page →'}
                           </a>
                         ) : '—'}
+                        {lead.fb_page_url && (
+                          <a href={lead.fb_page_url} target="_blank" rel="noopener noreferrer"
+                             className="kc-link" style={{ fontSize: 11, color: '#3B82F6' }}>
+                            FB page →
+                          </a>
+                        )}
                       </span>
 
                       <span className="lead-followers">

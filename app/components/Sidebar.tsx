@@ -57,6 +57,17 @@ const NAV_ITEMS = [
       </svg>
     ),
   },
+  {
+    href: '/kb',
+    label: 'Knowledge Base',
+    icon: (
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M2 3h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H2V3Z" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M12 5h1a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-1" stroke="currentColor" strokeWidth="1.4"/>
+        <path d="M5 7h5M5 10h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    ),
+  },
 ]
 
 export default function Sidebar() {
