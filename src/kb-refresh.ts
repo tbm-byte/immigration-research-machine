@@ -201,6 +201,137 @@ async function refreshWinningAds(): Promise<KbDocument[]> {
   }
 }
 
+// ── Part 3: My Legal Academy KB Articles ─────────────────────────────────────
+
+const MLA_INDEX = 'https://mylegalacademy.com/kb'
+const MLA_BASE  = 'https://mylegalacademy.com'
+
+/** Scrape all article slugs from the MLA /kb index page */
+async function fetchMlaArticleUrls(): Promise<string[]> {
+  try {
+    const res = await fetch(MLA_INDEX, {
+      headers: { 'User-Agent': 'IRM-KB-Refresh/1.0' },
+      signal: AbortSignal.timeout(20_000),
+    })
+    if (!res.ok) return []
+    const html = await res.text()
+
+    // Extract all /kb/* links (exclude /kb itself and /kb/category/* paths)
+    const found = new Set<string>()
+    const pattern = /href="(\/kb\/[a-z0-9][a-z0-9-]+)"/gi
+    for (const m of html.matchAll(pattern)) {
+      const path = m[1]
+      // Skip category/tag index pages (they have no content themselves)
+      if (path === '/kb' || path.startsWith('/kb/category') || path.startsWith('/kb/tag')) continue
+      found.add(MLA_BASE + path)
+    }
+    return [...found]
+  } catch {
+    return []
+  }
+}
+
+/** Fetch one MLA article and return its plain-text content */
+async function fetchMlaArticle(url: string): Promise<{ title: string; content: string } | null> {
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'IRM-KB-Refresh/1.0' },
+      signal: AbortSignal.timeout(15_000),
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    // Extract <title>
+    const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i)
+    const rawTitle   = (titleMatch?.[1] ?? '').replace(/\s*[–|]\s*My Legal Academy.*$/i, '').replace(/&#\d+;/g, '').trim()
+
+    // Try to pull the article body — look for common content wrappers
+    const bodyPatterns = [
+      /<article[^>]*>([\s\S]*?)<\/article>/i,
+      /<div[^>]+class="[^"]*entry-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]+class="[^"]*post-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<div[^>]+class="[^"]*article[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+      /<main[^>]*>([\s\S]*?)<\/main>/i,
+    ]
+
+    let body = ''
+    for (const pat of bodyPatterns) {
+      const m = html.match(pat)
+      if (m?.[1] && m[1].length > 500) { body = m[1]; break }
+    }
+
+    // Strip HTML tags, decode common entities, collapse whitespace
+    const text = body
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+      .replace(/&#\d+;/g, '').replace(/&[a-z]+;/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 6000) // keep first ~6k chars — enough for dense summarization
+
+    if (!rawTitle || text.length < 200) return null
+    return { title: rawTitle, content: text }
+  } catch {
+    return null
+  }
+}
+
+async function refreshMylegalacademy(): Promise<KbDocument[]> {
+  console.log('🎓 Fetching My Legal Academy KB articles…')
+
+  const urls = await fetchMlaArticleUrls()
+  if (urls.length === 0) {
+    console.warn('  ⚠ No MLA article URLs found — site may have blocked the request')
+    return []
+  }
+  console.log(`  → ${urls.length} article URLs discovered`)
+
+  const docs: KbDocument[] = []
+  const BATCH = 5      // concurrent fetches
+  const DELAY = 800    // ms between batches (polite crawl)
+
+  for (let i = 0; i < urls.length; i += BATCH) {
+    const batch = urls.slice(i, i + BATCH)
+    const results = await Promise.allSettled(batch.map(url => fetchMlaArticle(url)))
+
+    for (let j = 0; j < results.length; j++) {
+      const result = results[j]
+      if (result.status !== 'fulfilled' || !result.value) continue
+
+      const { title, content } = result.value
+      const url = batch[j]
+
+      // Try to summarise with Claude; fall back to raw excerpt if no API key
+      let stored: string
+      if (ANTHROPIC_KEY) {
+        const summary = await summariseWithClaude('My Legal Academy', title, content)
+        if (!summary) continue
+        stored = `[My Legal Academy] ${title}\n\n${summary}\n\nSource: ${url}`
+      } else {
+        // Store first 600 chars of raw text as excerpt
+        stored = `[My Legal Academy] ${title}\n\n${content.slice(0, 600)}\n\nSource: ${url}`
+      }
+
+      docs.push({
+        source:       'My Legal Academy',
+        title,
+        content:      stored,
+        content_hash: hash(stored),
+        category:     'legal_marketing',
+      })
+    }
+
+    if (i + BATCH < urls.length) {
+      await new Promise(r => setTimeout(r, DELAY))
+    }
+  }
+
+  console.log(`  → ${docs.length} MLA docs ready`)
+  return docs
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export async function runKbRefresh(): Promise<{ added: number; skipped: number; errors: string[] }> {
@@ -219,6 +350,13 @@ export async function runKbRefresh(): Promise<{ added: number; skipped: number; 
     allDocs.push(...adsResult)
   } catch (err) {
     errors.push(`Ads: ${(err as Error).message}`)
+  }
+
+  try {
+    const mlaResult = await refreshMylegalacademy()
+    allDocs.push(...mlaResult)
+  } catch (err) {
+    errors.push(`MLA: ${(err as Error).message}`)
   }
 
   if (allDocs.length === 0) {
